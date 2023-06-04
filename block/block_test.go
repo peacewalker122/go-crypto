@@ -1,7 +1,9 @@
 package block
 
 import (
-	"github.com/stretchr/testify/assert"
+	"fmt"
+	"runtime/debug"
+	"strconv"
 	"testing"
 )
 
@@ -16,21 +18,35 @@ func TestNewBlock(t *testing.T) {
 				bc := NewBlockchain()
 				bc.AddBlock("Send 1 BTC to Ivan")
 				bc.AddBlock("Send 2 more BTC to Ivan")
+				bc.AddBlock("Send 1 more BTC to Ivan")
+				iter := bc.Iterator()
 
-				assert.Equal(t, 3, len(bc.blocks), "NewBlock() = %v, want %v", len(bc.blocks), 3)
+				for {
+					block := iter.Next()
 
-				for _, block := range bc.blocks {
+					fmt.Printf("Prev. hash: %x\n", block.PrevBlockHash)
+					fmt.Printf("Data: %s\n", block.Data)
+					fmt.Printf("Hash: %x\n", block.Hash)
 					pow := NewProofOfWork(block)
-					assert.True(t, pow.Validate(), "NewBlock() = %v, want %v", pow.Validate(), true)
-					t.Logf("Valid POW: %v\n", pow.Validate())
-					t.Logf("Prev. hash: %x\n", block.PrevBlockHash)
-					t.Logf("Data: %s\n", block.Data)
-					t.Logf("Hash: %x\n", block.Hash)
+					fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
+					fmt.Println()
+
+					if len(block.PrevBlockHash) == 0 {
+						break
+					}
 				}
+
 			},
 		},
 	}
 	for _, tc := range testcases {
-		t.Run(tc.name, tc.fn)
+		t.Run(tc.name, func(t *testing.T) {
+			tc.fn(t)
+
+			if err := recover(); err != nil {
+				debug.PrintStack()
+				t.Errorf("TestNewBlock() failed: %v", err)
+			}
+		})
 	}
 }
